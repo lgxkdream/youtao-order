@@ -8,11 +8,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.youtao.order.bean.YoutaoResult;
 import com.youtao.order.pojo.Order;
 import com.youtao.order.pojo.PageResult;
 import com.youtao.order.pojo.ResultMsg;
 import com.youtao.order.service.OrderService;
+import com.youtao.order.utils.ValidateUtil;
 
 /**
  * @title: OrderController
@@ -26,6 +28,8 @@ import com.youtao.order.service.OrderService;
 @RequestMapping("/order")
 @Controller
 public class OrderController {
+	
+	private static final ObjectMapper MAPPER = new ObjectMapper();
 
 	@Autowired
 	private OrderService orderService;
@@ -38,7 +42,21 @@ public class OrderController {
 	@ResponseBody
 	@RequestMapping(value = "/create" , method = RequestMethod.POST)
 	public YoutaoResult createOrder(@RequestBody String json) {
-		return orderService.createOrder(json);
+		try {
+			Order order = null;
+			try {
+			    order = MAPPER.readValue(json, Order.class);
+			    // 校验Order对象
+			    ValidateUtil.validate(order);
+			} catch (Exception e) {
+			    return YoutaoResult.build(400, "请求参数有误!");
+			}
+			String orderId = orderService.createOrder(order);
+			return YoutaoResult.ok(orderId);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return YoutaoResult.build(400, "保存订单失败!");
 	}
 	
 	
@@ -75,6 +93,13 @@ public class OrderController {
 	@ResponseBody
 	@RequestMapping(value="/changeOrderStatus",method = RequestMethod.POST)
 	public ResultMsg changeOrderStatus(@RequestBody String json) {
-		return orderService.changeOrderStatus(json);
+		Order order = null;
+        try {
+            order = MAPPER.readValue(json, Order.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResultMsg("400", "请求参数有误!");
+        }
+		return orderService.changeOrderStatus(order);
 	}
 }
